@@ -72,8 +72,7 @@ def Value(typecode_or_type, *args, **kwds):
     lock = kwds.pop('lock', None)
     ctx = kwds.pop('ctx', None)
     if kwds:
-        raise ValueError(
-            'unrecognized keyword argument(s): %s' % list(kwds.keys()))
+        raise ValueError(f'unrecognized keyword argument(s): {list(kwds.keys())}')
     obj = RawValue(typecode_or_type, *args)
     if lock is False:
         return obj
@@ -92,8 +91,7 @@ def Array(typecode_or_type, size_or_initializer, **kwds):
     lock = kwds.pop('lock', None)
     ctx = kwds.pop('ctx', None)
     if kwds:
-        raise ValueError(
-            'unrecognized keyword argument(s): %s' % list(kwds.keys()))
+        raise ValueError(f'unrecognized keyword argument(s): {list(kwds.keys())}')
     obj = RawArray(typecode_or_type, size_or_initializer)
     if lock is False:
         return obj
@@ -127,8 +125,8 @@ def synchronized(obj, lock=None, ctx=None):
             scls = class_cache[cls]
         except KeyError:
             names = [field[0] for field in cls._fields_]
-            d = dict((name, make_property(name)) for name in names)
-            classname = 'Synchronized' + cls.__name__
+            d = {name: make_property(name) for name in names}
+            classname = f'Synchronized{cls.__name__}'
             scls = class_cache[cls] = type(classname, (SynchronizedBase,), d)
         return scls(obj, lock, ctx)
 
@@ -225,7 +223,7 @@ class SynchronizedBase(object):
         return self._lock
 
     def __repr__(self):
-        return '<%s wrapper for %s>' % (type(self).__name__, self._obj)
+        return f'<{type(self).__name__} wrapper for {self._obj}>'
 
 
 class Synchronized(SynchronizedBase):

@@ -139,8 +139,7 @@ class SemLock(object):
 
     @staticmethod
     def _make_name():
-        return '%s-%s' % (process.current_process()._config['semprefix'],
-                          next(SemLock._rand))
+        return f"{process.current_process()._config['semprefix']}-{next(SemLock._rand)}"
 
 
 class Semaphore(SemLock):
@@ -156,7 +155,7 @@ class Semaphore(SemLock):
             value = self._semlock._get_value()
         except Exception:
             value = 'unknown'
-        return '<%s(value=%s)>' % (self.__class__.__name__, value)
+        return f'<{self.__class__.__name__}(value={value})>'
 
 
 class BoundedSemaphore(Semaphore):
@@ -169,8 +168,7 @@ class BoundedSemaphore(Semaphore):
             value = self._semlock._get_value()
         except Exception:
             value = 'unknown'
-        return '<%s(value=%s, maxvalue=%s)>' % (
-            self.__class__.__name__, value, self._semlock.maxvalue)
+        return f'<{self.__class__.__name__}(value={value}, maxvalue={self._semlock.maxvalue})>'
 
 
 class Lock(SemLock):
@@ -186,7 +184,7 @@ class Lock(SemLock):
             if self._semlock._is_mine():
                 name = process.current_process().name
                 if threading.current_thread().name != 'MainThread':
-                    name += '|' + threading.current_thread().name
+                    name += f'|{threading.current_thread().name}'
             elif self._semlock._get_value() == 1:
                 name = 'None'
             elif self._semlock._count() > 0:
@@ -195,7 +193,7 @@ class Lock(SemLock):
                 name = 'SomeOtherProcess'
         except Exception:
             name = 'unknown'
-        return '<%s(owner=%s)>' % (self.__class__.__name__, name)
+        return f'<{self.__class__.__name__}(owner={name})>'
 
 
 class RLock(SemLock):
@@ -211,7 +209,7 @@ class RLock(SemLock):
             if self._semlock._is_mine():
                 name = process.current_process().name
                 if threading.current_thread().name != 'MainThread':
-                    name += '|' + threading.current_thread().name
+                    name += f'|{threading.current_thread().name}'
                 count = self._semlock._count()
             elif self._semlock._get_value() == 1:
                 name, count = 'None', 0
@@ -221,7 +219,7 @@ class RLock(SemLock):
                 name, count = 'SomeOtherProcess', 'nonzero'
         except Exception:
             name, count = 'unknown', 'unknown'
-        return '<%s(%s, %s)>' % (self.__class__.__name__, name, count)
+        return f'<{self.__class__.__name__}({name}, {count})>'
 
 
 class Condition(object):
@@ -263,19 +261,18 @@ class Condition(object):
                            self._woken_count._semlock._get_value())
         except Exception:
             num_waiters = 'unknown'
-        return '<%s(%s, %s)>' % (
-            self.__class__.__name__, self._lock, num_waiters)
+        return f'<{self.__class__.__name__}({self._lock}, {num_waiters})>'
 
     def wait(self, timeout=None):
         assert self._lock._semlock._is_mine(), \
-            'must acquire() condition before using wait()'
+                'must acquire() condition before using wait()'
 
         # indicate that this thread is going to sleep
         self._sleeping_count.release()
 
         # release lock
         count = self._lock._semlock._count()
-        for i in range(count):
+        for _ in range(count):
             self._lock.release()
 
         try:
@@ -286,7 +283,7 @@ class Condition(object):
             self._woken_count.release()
 
             # reacquire lock
-            for i in range(count):
+            for _ in range(count):
                 self._lock.acquire()
 
     def notify(self):
@@ -322,7 +319,7 @@ class Condition(object):
             sleepers += 1
 
         if sleepers:
-            for i in range(sleepers):
+            for _ in range(sleepers):
                 self._woken_count.acquire()       # wait for a sleeper to wake
 
             # rezero wait_semaphore in case some timeouts just happened

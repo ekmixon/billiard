@@ -21,7 +21,7 @@ except ImportError:
 try:
     from subprocess import _args_from_interpreter_flags  # noqa
 except ImportError:  # pragma: no cover
-    def _args_from_interpreter_flags():  # noqa
+    def _args_from_interpreter_flags():    # noqa
         """Return a list of command-line arguments reproducing the current
         settings in sys.flags and sys.warnoptions."""
         flag_opt_map = {
@@ -41,8 +41,7 @@ except ImportError:  # pragma: no cover
             v = getattr(sys.flags, flag)
             if v > 0:
                 args.append('-' + opt * v)
-        for opt in sys.warnoptions:
-            args.append('-W' + opt)
+        args.extend(f'-W{opt}' for opt in sys.warnoptions)
         return args
 
 from multiprocessing.util import (  # noqa

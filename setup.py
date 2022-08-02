@@ -61,7 +61,7 @@ def add_default(m):
 
 def add_version(m):
     v = list(map(rq, m.groups()[0].split(', ')))
-    return (('VERSION', '.'.join(v[0:4]) + ''.join(v[4:])), )
+    return (('VERSION', '.'.join(v[:4]) + ''.join(v[4:])), )
 
 
 def add_doc(m):
@@ -78,9 +78,8 @@ try:
         if line.strip() == '# -eof meta-':
             break
         for pattern, handler in pats.items():
-            m = pattern.match(line.strip())
-            if m:
-                meta.update(handler(m))
+            if m := pattern.match(line.strip()):
+                meta |= handler(m)
 finally:
     meta_fh.close()
 
@@ -89,7 +88,7 @@ if sys.version_info < (2, 7):
     raise ValueError('Versions of Python before 2.7 are not supported')
 
 if sys.platform == 'win32':  # Windows
-    macros = dict()
+    macros = {}
     libraries = ['ws2_32']
 elif sys.platform.startswith('darwin'):  # macOS
     macros = dict(
@@ -233,10 +232,9 @@ def run_setup(with_extensions=True):
 try:
     run_setup(not (is_jython or is_pypy or is_py3k))
 except BaseException:
-    if _is_build_command(sys.argv):
-        import traceback
-        print(BUILD_WARNING % '\n'.join(traceback.format_stack()),
-              file=sys.stderr)
-        run_setup(False)
-    else:
+    if not _is_build_command(sys.argv):
         raise
+    import traceback
+    print(BUILD_WARNING % '\n'.join(traceback.format_stack()),
+          file=sys.stderr)
+    run_setup(False)

@@ -1,4 +1,5 @@
 """Python multiprocessing fork with improvements and bugfixes"""
+
 #
 # Package analogous to 'threading.py' but using processes
 #
@@ -23,7 +24,7 @@ import sys
 from . import context
 
 VERSION = (3, 6, 4, 0)
-__version__ = '.'.join(map(str, VERSION[0:4])) + "".join(VERSION[4:])
+__version__ = '.'.join(map(str, VERSION[:4])) + "".join(VERSION[4:])
 __author__ = 'R Oudkerk / Python Software Foundation'
 __author_email__ = 'python-dev@python.org'
 __maintainer__ = 'Asif Saif Uddin'

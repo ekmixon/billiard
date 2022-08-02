@@ -45,10 +45,7 @@ class Queue(object):
         self._reader, self._writer = connection.Pipe(duplex=False)
         self._rlock = ctx.Lock()
         self._opid = os.getpid()
-        if sys.platform == 'win32':
-            self._wlock = None
-        else:
-            self._wlock = ctx.Lock()
+        self._wlock = None if sys.platform == 'win32' else ctx.Lock()
         self._sem = ctx.BoundedSemaphore(maxsize)
         # For use by concurrent.futures
         self._ignore_epipe = False
@@ -141,8 +138,7 @@ class Queue(object):
         try:
             self._reader.close()
         finally:
-            close = self._close
-            if close:
+            if close := self._close:
                 self._close = None
                 close()
 
@@ -268,11 +264,10 @@ class Queue(object):
             try:
                 if is_exiting():
                     info('error in queue thread: %r', exc, exc_info=True)
-                else:
-                    if not error('error in queue thread: %r', exc,
+                elif not error('error in queue thread: %r', exc,
                                  exc_info=True):
-                        import traceback
-                        traceback.print_exc()
+                    import traceback
+                    traceback.print_exc()
             except Exception:
                 pass
 

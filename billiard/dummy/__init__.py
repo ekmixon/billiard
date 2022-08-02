@@ -74,10 +74,7 @@ class DummyProcess(threading.Thread):
 
     @property
     def exitcode(self):
-        if self._start_called and not self.is_alive():
-            return 0
-        else:
-            return None
+        return 0 if self._start_called and not self.is_alive() else None
 
 
 try:
@@ -117,12 +114,14 @@ class Namespace(object):
 
     def __repr__(self):
         items = list(self.__dict__.items())
-        temp = []
-        for name, value in items:
-            if not name.startswith('_'):
-                temp.append('%s=%r' % (name, value))
+        temp = [
+            '%s=%r' % (name, value)
+            for name, value in items
+            if not name.startswith('_')
+        ]
+
         temp.sort()
-        return '%s(%s)' % (self.__class__.__name__, str.join(', ', temp))
+        return f"{self.__class__.__name__}({str.join(', ', temp)})"
 
 
 dict = dict

@@ -124,9 +124,7 @@ def _get_send_offset(connection):
         native = connection.send_offset
     except AttributeError:
         native = None
-    if native is None:
-        return partial(send_offset, connection.fileno())
-    return native
+    return partial(send_offset, connection.fileno()) if native is None else native
 
 
 def mapstar(args):
@@ -215,7 +213,7 @@ class MaybeEncodingError(Exception):
         super(MaybeEncodingError, self).__init__(self.exc, self.value)
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, str(self))
+        return f"<{self.__class__.__name__}: {str(self)}>"
 
     def __str__(self):
         return "Error sending result: '%r'. Reason: '%r'." % (
@@ -446,9 +444,8 @@ class Worker(object):
                     return True, loads(get_payload())
             else:
                 def _recv(timeout):  # noqa
-                    if _poll(timeout):
-                        return True, get()
-                    return False, None
+                    return (True, get()) if _poll(timeout) else (False, None)
+
         else:
             def _recv(timeout):  # noqa
                 try:
@@ -685,9 +682,6 @@ class TimeoutHandler(PoolThread):
             raise TimeLimitExceeded(job._timeout)
         except TimeLimitExceeded:
             job._set(job._job, (False, ExceptionInfo()))
-        else:  # pragma: no cover
-            pass
-
         # Remove from _pool
         process, _index = self._process_by_pid(job._worker_pid)
 
@@ -741,7 +735,7 @@ class TimeoutHandler(PoolThread):
 
             # Remove dirty items not in cache anymore
             if dirty:
-                dirty = set(k for k in dirty if k in cache)
+                dirty = {k for k in dirty if k in cache}
 
             for i, job in cache.items():
                 ack_time = job._time_accepted
@@ -829,9 +823,8 @@ class ResultHandler(PoolThread):
                     with on_ready_counter.get_lock():
                         on_ready_counter.value += 1
 
-            if not item.ready():
-                if putlock is not None:
-                    putlock.release()
+            if not item.ready() and putlock is not None:
+                putlock.release()
             try:
                 item._set(i, obj)
             except KeyError:
@@ -854,6 +847,7 @@ class ResultHandler(PoolThread):
                 state_handlers[state](*args)
             except KeyError:
                 debug("Unknown job state: %s (args=%s)", state, args)
+
         self.on_state_change = on_state_change
 
     def _process_result(self, timeout=1.0):
@@ -950,7 +944,7 @@ class ResultHandler(PoolThread):
             # attempts to add the sentinel (None) to outqueue may
             # block.  There is guaranteed to be no more than 2 sentinels.
             try:
-                for i in range(10):
+                for _ in range(10):
                     if not outqueue._reader.poll():
                         break
                     get()
@@ -1200,7 +1194,7 @@ class Pool(object):
                 cleaned[worker.pid] = worker
                 exitcodes[worker.pid] = exitcode
                 if exitcode not in (EX_OK, EX_RECYCLE) and \
-                        not getattr(worker, '_controlled_termination', False):
+                            not getattr(worker, '_controlled_termination', False):
                     error(
                         'Process %r pid:%r exited with %r',
                         worker.name, worker.pid, human_status(exitcode),
@@ -1213,13 +1207,14 @@ class Pool(object):
         if cleaned:
             all_pids = [w.pid for w in self._pool]
             for job in list(self._cache.values()):
-                acked_by_gone = next(
-                    (pid for pid in job.worker_pids()
-                     if pid in cleaned or pid not in all_pids),
-                    None
-                )
-                # already accepted by process
-                if acked_by_gone:
+                if acked_by_gone := next(
+                    (
+                        pid
+                        for pid in job.worker_pids()
+                        if pid in cleaned or pid not in all_pids
+                    ),
+                    None,
+                ):
                     self.on_job_process_down(job, acked_by_gone)
                     if not job.ready():
                         exitcode = exitcodes.get(acked_by_gone) or 0
@@ -1269,8 +1264,6 @@ class Pool(object):
             )
         except WorkerLostError:
             job._set(None, (False, ExceptionInfo()))
-        else:  # pragma: no cover
-            pass
 
     def __enter__(self):
         return self
@@ -1297,7 +1290,7 @@ class Pool(object):
             raise ValueError("Can't shrink pool. All processes busy!")
 
     def grow(self, n=1):
-        for i in range(n):
+        for _ in range(n):
             self._processes += 1
             if self._putlock:
                 self._putlock.grow()
@@ -1309,10 +1302,7 @@ class Pool(object):
                 yield worker
 
     def _worker_active(self, worker):
-        for job in values(self._cache):
-            if worker.pid in job.worker_pids():
-                return True
-        return False
+        return any(worker.pid in job.worker_pids() for job in values(self._cache))
 
     def _repopulate_pool(self, exitcodes):
         """Bring the number of pool processes up to the specified number,
@@ -1331,7 +1321,7 @@ class Pool(object):
 
     def _avail_index(self):
         assert len(self._pool) < self._processes
-        indices = set(p.index for p in self._pool)
+        indices = {p.index for p in self._pool}
         return next(i for i in range(self._processes) if i not in indices)
 
     def did_start_ok(self):
@@ -1342,7 +1332,7 @@ class Pool(object):
         """
         joined = self._join_exited_workers()
         self._repopulate_pool(joined)
-        for i in range(len(joined)):
+        for _ in range(len(joined)):
             if self._putlock is not None:
                 self._putlock.release()
 
@@ -1581,10 +1571,10 @@ class Pool(object):
     def _get_tasks(func, it, size):
         it = iter(it)
         while 1:
-            x = tuple(itertools.islice(it, size))
-            if not x:
+            if x := tuple(itertools.islice(it, size)):
+                yield (func, x)
+            else:
                 return
-            yield (func, x)
 
     def __reduce__(self):
         raise NotImplementedError(

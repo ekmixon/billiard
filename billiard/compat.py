@@ -42,11 +42,7 @@ try:
 except AttributeError:
     def _fscodec():
         encoding = sys.getfilesystemencoding()
-        if encoding == 'mbcs':
-            errors = 'strict'
-        else:
-            errors = 'surrogateescape'
-
+        errors = 'strict' if encoding == 'mbcs' else 'surrogateescape'
         def fsencode(filename):
             """
             Encode filename to the filesystem encoding with 'surrogateescape'
@@ -59,8 +55,7 @@ except AttributeError:
             elif isinstance(filename, str):
                 return filename.encode(encoding, errors)
             else:
-                raise TypeError("expect bytes or str, not %s"
-                                % type(filename).__name__)
+                raise TypeError(f"expect bytes or str, not {type(filename).__name__}")
 
         def fsdecode(filename):
             """
@@ -74,8 +69,7 @@ except AttributeError:
             elif isinstance(filename, bytes):
                 return filename.decode(encoding, errors)
             else:
-                raise TypeError("expect bytes or str, not %s"
-                                % type(filename).__name__)
+                raise TypeError(f"expect bytes or str, not {type(filename).__name__}")
 
         return fsencode, fsdecode
 
@@ -108,9 +102,7 @@ def get_fdmax(default=None):
     if resource is None:  # Windows
         return default
     fdmax = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
-    if fdmax == resource.RLIM_INFINITY:
-        return default
-    return fdmax
+    return default if fdmax == resource.RLIM_INFINITY else fdmax
 
 
 def uniq(it):

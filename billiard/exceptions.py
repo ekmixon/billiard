@@ -25,7 +25,7 @@ class TimeLimitExceeded(Exception):
     """The time limit has been exceeded and the job has been terminated."""
 
     def __str__(self):
-        return "TimeLimitExceeded%s" % (self.args, )
+        return f"TimeLimitExceeded{self.args}"
 
 
 class SoftTimeLimitExceeded(Exception):
@@ -33,7 +33,7 @@ class SoftTimeLimitExceeded(Exception):
     to give the task a chance to clean up."""
 
     def __str__(self):
-        return "SoftTimeLimitExceeded%s" % (self.args, )
+        return f"SoftTimeLimitExceeded{self.args}"
 
 
 class WorkerLostError(Exception):

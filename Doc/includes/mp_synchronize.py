@@ -131,10 +131,12 @@ def test_semaphore():
     running = multiprocessing.Value('i', 0)
 
     processes = [
-        multiprocessing.Process(target=semaphore_func,
-                                args=(sema, mutex, running))
-        for i in range(10)
-        ]
+        multiprocessing.Process(
+            target=semaphore_func, args=(sema, mutex, running)
+        )
+        for _ in range(10)
+    ]
+
 
     for p in processes:
         p.start()
@@ -174,16 +176,21 @@ def event_func(event):
 def test_event():
     event = multiprocessing.Event()
 
-    processes = [multiprocessing.Process(target=event_func, args=(event,))
-                 for i in range(5)]
+    processes = [
+        multiprocessing.Process(target=event_func, args=(event,))
+        for _ in range(5)
+    ]
+
 
     for p in processes:
         p.start()
 
-    print 'main is sleeping'
+    event = multiprocessing.Event()
+
     time.sleep(2)
 
-    print 'main is setting event'
+    event = multiprocessing.Event()
+
     event.set()
 
     for p in processes:

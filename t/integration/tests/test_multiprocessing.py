@@ -314,24 +314,18 @@ class _TestSubclassingProcess(BaseTestCase):
 
 
 def queue_empty(q):
-    if hasattr(q, 'empty'):
-        return q.empty()
-    else:
-        return q.qsize() == 0
+    return q.empty() if hasattr(q, 'empty') else q.qsize() == 0
 
 
 def queue_full(q, maxsize):
-    if hasattr(q, 'full'):
-        return q.full()
-    else:
-        return q.qsize() == maxsize
+    return q.full() if hasattr(q, 'full') else q.qsize() == maxsize
 
 
 class _TestQueue(BaseTestCase):
 
     def _test_put(self, queue, child_can_start, parent_can_continue):
         child_can_start.wait()
-        for i in range(6):
+        for _ in range(6):
             queue.get()
         parent_can_continue.set()
 
@@ -502,7 +496,7 @@ class _TestQueue(BaseTestCase):
         self.assertEqual(q.qsize(), 0)
 
     def _test_task_done(self, q):
-        for obj in iter(q.get, None):
+        for _ in iter(q.get, None):
             time.sleep(DELTA)
             q.task_done()
 
@@ -512,8 +506,11 @@ class _TestQueue(BaseTestCase):
         if sys.version_info < (2, 5) and not hasattr(queue, 'task_done'):
             self.skipTest("requires 'queue.task_done()' method")
 
-        workers = [self.Process(target=self._test_task_done, args=(queue,))
-                   for i in xrange(4)]
+        workers = [
+            self.Process(target=self._test_task_done, args=(queue,))
+            for _ in xrange(4)
+        ]
+
 
         for p in workers:
             p.start()
@@ -677,7 +674,7 @@ class _TestCondition(BaseTestCase):
         woken = self.Semaphore(0)
 
         # start some threads/processes which will timeout
-        for i in range(3):
+        for _ in range(3):
             p = self.Process(target=self.f,
                              args=(cond, sleeping, woken, TIMEOUT1))
             p.daemon = True
@@ -689,11 +686,11 @@ class _TestCondition(BaseTestCase):
             t.start()
 
         # wait for them all to sleep
-        for i in xrange(6):
+        for _ in xrange(6):
             sleeping.acquire()
 
         # check they have all timed out
-        for i in xrange(6):
+        for _ in xrange(6):
             woken.acquire()
         self.assertReturnsIfImplemented(0, get_value, woken)
 
@@ -701,7 +698,7 @@ class _TestCondition(BaseTestCase):
         self.check_invariant(cond)
 
         # start some more threads/processes
-        for i in range(3):
+        for _ in range(3):
             p = self.Process(target=self.f, args=(cond, sleeping, woken))
             p.daemon = True
             p.start()
@@ -711,7 +708,7 @@ class _TestCondition(BaseTestCase):
             t.start()
 
         # wait for them to all sleep
-        for i in xrange(6):
+        for _ in xrange(6):
             sleeping.acquire()
 
         # check no process/thread has woken up
@@ -855,11 +852,7 @@ class _TestArray(BaseTestCase):
     @unittest.skipIf(c_int is None, "requires _ctypes")
     def test_array(self, raw=False):
         seq = [680, 626, 934, 821, 150, 233, 548, 982, 714, 831]
-        if raw:
-            arr = self.RawArray('i', seq)
-        else:
-            arr = self.Array('i', seq)
-
+        arr = self.RawArray('i', seq) if raw else self.Array('i', seq)
         self.assertEqual(len(arr), len(seq))
         self.assertEqual(arr[3], seq[3])
         self.assertEqual(list(arr[2:7]), list(seq[2:7]))
@@ -947,7 +940,7 @@ class _TestContainers(BaseTestCase):
         indices = range(65, 70)
         for i in indices:
             d[i] = chr(i)
-        self.assertEqual(d.copy(), dict((j, chr(j)) for j in indices))
+        self.assertEqual(d.copy(), {j: chr(j) for j in indices})
         self.assertEqual(sorted(d.keys()), indices)
         self.assertEqual(sorted(d.values()), [chr(z) for z in indices])
         self.assertEqual(sorted(d.items()), [(x, chr(x)) for x in indices])
@@ -1037,9 +1030,7 @@ class _TestPool(BaseTestCase):
             # when using a manager.
             return
 
-        self.pool.map_async(
-            time.sleep, [0.1 for i in range(10000)], chunksize=1
-        )
+        self.pool.map_async(time.sleep, [0.1 for _ in range(10000)], chunksize=1)
         self.pool.terminate()
         join = TimingWrapper(self.pool.join)
         join()
@@ -1054,9 +1045,7 @@ class _TestPoolWorkerLifetime(BaseTestCase):
         self.assertEqual(3, len(p._pool))
         origworkerpids = [w.pid for w in p._pool]
         # Run many tasks so each worker gets replaced (hopefully)
-        results = []
-        for i in range(100):
-            results.append(p.apply_async(sqr, (i, )))
+        results = [p.apply_async(sqr, (i, )) for i in range(100)]
         # Fetch the results and verify we got the right answers,
         # also ensuring all the tasks have completed.
         for (j, res) in enumerate(results):
@@ -1317,7 +1306,7 @@ class _TestConnection(BaseTestCase):
             except billiard.BufferTooShort as exc:
                 self.assertEqual(exc.args, (longmsg,))
             else:
-                self.fail('expected BufferTooShort, got %s' % res)
+                self.fail(f'expected BufferTooShort, got {res}')
 
         poll = TimingWrapper(conn.poll)
 
@@ -1542,9 +1531,11 @@ class _TestHeap(BaseTestCase):
         all = []
         occupied = 0
         for L in heap._len_to_seq.values():
-            for arena, start, stop in L:
-                all.append((heap._arenas.index(arena), start, stop,
-                            stop - start, 'free'))
+            all.extend(
+                (heap._arenas.index(arena), start, stop, stop - start, 'free')
+                for arena, start, stop in L
+            )
+
         for arena, start, stop in heap._allocated_blocks:
             all.append((heap._arenas.index(arena), start, stop,
                         stop - start, 'occupied'))
@@ -1662,7 +1653,7 @@ class _TestFinalize(BaseTestCase):
         p.start()
         p.join()
 
-        result = [obj for obj in iter(conn.recv, 'STOP')]
+        result = list(iter(conn.recv, 'STOP'))
         self.assertEqual(result, ['a', 'b', 'd10', 'd03', 'd02', 'd01', 'e'])
 
 
@@ -1781,18 +1772,16 @@ def create_test_cases(Mixin, type):
     glob = globals()
     Type = type.capitalize()
 
-    for name in glob.keys():
-        if name.startswith('_Test'):
-            base = glob[name]
-            if type in base.ALLOWED_TYPES:
-                newname = 'With' + Type + name[1:]
+    for name, base in glob.items():
+        if name.startswith('_Test') and type in base.ALLOWED_TYPES:
+            newname = f'With{Type}{name[1:]}'
 
-                class Temp(base, unittest.TestCase, Mixin):
-                    pass
+            class Temp(base, unittest.TestCase, Mixin):
+                pass
 
-                result[newname] = Temp
-                Temp.__name__ = newname
-                Temp.__module__ = Mixin.__module__
+            result[newname] = Temp
+            Temp.__name__ = newname
+            Temp.__module__ = Mixin.__module__
     return result
 
 

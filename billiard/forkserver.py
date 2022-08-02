@@ -44,7 +44,7 @@ class ForkServer(object):
 
     def set_forkserver_preload(self, modules_names):
         '''Set list of module names to try to load in forkserver process.'''
-        if not all(type(mod) is str for mod in self._preload_modules):
+        if any(type(mod) is not str for mod in self._preload_modules):
             raise TypeError('module_names must be a list of strings')
         self._preload_modules = modules_names
 
@@ -164,8 +164,7 @@ def main(listener_fd, alive_r, preload, main_path=None, sys_path=None):
 
     # ignoring SIGCHLD means no need to reap zombie processes
     handler = signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-    with socket.socket(socket.AF_UNIX, fileno=listener_fd) as listener, \
-            selectors.DefaultSelector() as selector:
+    with socket.socket(socket.AF_UNIX, fileno=listener_fd) as listener, selectors.DefaultSelector() as selector:
         _forkserver._forkserver_address = listener.getsockname()
         selector.register(listener, selectors.EVENT_READ)
         selector.register(alive_r, selectors.EVENT_READ)
@@ -184,8 +183,8 @@ def main(listener_fd, alive_r, preload, main_path=None, sys_path=None):
 
                 assert listener in rfds
                 with listener.accept()[0] as s:
-                    code = 1
                     if os.fork() == 0:
+                        code = 1
                         try:
                             _serve_one(s, listener, alive_r, handler)
                         except Exception:
@@ -240,10 +239,10 @@ def read_unsigned(fd):
     data = b''
     length = UNSIGNED_STRUCT.size
     while len(data) < length:
-        s = os.read(fd, length - len(data))
-        if not s:
+        if s := os.read(fd, length - len(data)):
+            data += s
+        else:
             raise EOFError('unexpected EOF')
-        data += s
     return UNSIGNED_STRUCT.unpack(data)[0]
 
 

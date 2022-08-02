@@ -2,6 +2,7 @@
 """
 This module contains utilities added by billiard, to keep
 "non-core" functionality out of ``.util``."""
+
 from __future__ import absolute_import
 
 import os
@@ -21,9 +22,7 @@ pickle_loads = pickle.loads
 from io import BytesIO
 
 
-SIGMAP = dict(
-    (getattr(signal, n), n) for n in dir(signal) if n.startswith('SIG')
-)
+SIGMAP = {getattr(signal, n): n for n in dir(signal) if n.startswith('SIG')}
 for _alias_sig in ('SIGHUP', 'SIGABRT'):
     try:
         # Alias for deprecated signal overwrites the name we want
@@ -122,13 +121,11 @@ def _should_override_term_signal(sig, current):
 
 def reset_signals(handler=_shutdown_cleanup, full=False):
     for sig in TERMSIGS_FULL if full else TERMSIGS_DEFAULT:
-        num = signum(sig)
-        if num:
+        if num := signum(sig):
             if _should_override_term_signal(sig, signal.getsignal(num)):
                 maybe_setsignal(num, handler)
     for sig in TERMSIGS_IGNORE:
-        num = signum(sig)
-        if num:
+        if num := signum(sig):
             maybe_setsignal(num, signal.SIG_IGN)
 
 

@@ -93,15 +93,15 @@ class BaseProcess(object):
         self._target = target
         self._args = tuple(args)
         self._kwargs = dict(kwargs)
-        self._name = (
-            name or type(self).__name__ + '-' +
-            ':'.join(str(i) for i in self._identity)
+        self._name = name or (
+            f'{type(self).__name__}-' + ':'.join(str(i) for i in self._identity)
         )
+
         if daemon is not None:
             self.daemon = daemon
         if _dangling is not None:
             _dangling.add(self)
-        
+
         self._controlled_termination = False
 
     def run(self):
@@ -161,9 +161,7 @@ class BaseProcess(object):
         return self._popen.returncode is None
 
     def _is_alive(self):
-        if self._popen is None:
-            return False
-        return self._popen.poll() is None
+        return False if self._popen is None else self._popen.poll() is None
 
     @property
     def name(self):
@@ -205,9 +203,7 @@ class BaseProcess(object):
         '''
         Return exit code of process or `None` if it has yet to stop
         '''
-        if self._popen is None:
-            return self._popen
-        return self._popen.poll()
+        return self._popen if self._popen is None else self._popen.poll()
 
     @property
     def ident(self):
@@ -265,19 +261,14 @@ class BaseProcess(object):
         elif self._popen is None:
             status = 'initial'
         else:
-            if self._popen.poll() is not None:
-                status = self.exitcode
-            else:
-                status = 'started'
-
+            status = self.exitcode if self._popen.poll() is not None else 'started'
         if type(status) is int:
             if status == 0:
                 status = 'stopped'
             else:
-                status = 'stopped[%s]' % _exitcode_to_name.get(status, status)
+                status = f'stopped[{_exitcode_to_name.get(status, status)}]'
 
-        return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
-                                   status, self.daemon and ' daemon' or '')
+        return f"<{type(self).__name__}({self._name}, {status}{self.daemon and ' daemon' or ''})>"
 
     ##
 
@@ -392,11 +383,12 @@ Process = BaseProcess
 # Give names to some return codes
 #
 
-_exitcode_to_name = {}
+_exitcode_to_name = {
+    -signum: name
+    for name, signum in signal.__dict__.items()
+    if name[:3] == 'SIG' and '_' not in name
+}
 
-for name, signum in signal.__dict__.items():
-    if name[:3] == 'SIG' and '_' not in name:
-        _exitcode_to_name[-signum] = name
 
 # For debug and leak testing
 _dangling = WeakSet()

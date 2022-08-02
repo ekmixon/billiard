@@ -63,29 +63,30 @@ def _module_dir(mod):
 
 
 def _Django_old_layout_hack__save():
-    if 'DJANGO_PROJECT_DIR' not in os.environ:
-        try:
-            settings_name = os.environ['DJANGO_SETTINGS_MODULE']
-        except KeyError:
-            return  # not using Django.
+    if 'DJANGO_PROJECT_DIR' in os.environ:
+        return
+    try:
+        settings_name = os.environ['DJANGO_SETTINGS_MODULE']
+    except KeyError:
+        return  # not using Django.
 
-        conf_settings = sys.modules.get('django.conf.settings')
-        configured = conf_settings and conf_settings.configured
-        try:
-            project_name, _ = settings_name.split('.', 1)
-        except ValueError:
-            return  # not modified by setup_environ
+    conf_settings = sys.modules.get('django.conf.settings')
+    configured = conf_settings and conf_settings.configured
+    try:
+        project_name, _ = settings_name.split('.', 1)
+    except ValueError:
+        return  # not modified by setup_environ
 
-        project = __import__(project_name)
-        try:
-            project_dir = os.path.normpath(_module_parent_dir(project))
-        except AttributeError:
-            return  # dynamically generated module (no __file__)
-        if configured:
-            warnings.warn(UserWarning(
-                W_OLD_DJANGO_LAYOUT % os.path.realpath(project_dir)
-            ))
-        os.environ['DJANGO_PROJECT_DIR'] = project_dir
+    project = __import__(project_name)
+    try:
+        project_dir = os.path.normpath(_module_parent_dir(project))
+    except AttributeError:
+        return  # dynamically generated module (no __file__)
+    if configured:
+        warnings.warn(UserWarning(
+            W_OLD_DJANGO_LAYOUT % os.path.realpath(project_dir)
+        ))
+    os.environ['DJANGO_PROJECT_DIR'] = project_dir
 
 
 def _Django_old_layout_hack__load():
@@ -112,10 +113,7 @@ def is_forking(argv):
     '''
     Return whether commandline indicates we are forking
     '''
-    if len(argv) >= 2 and argv[1] == '--billiard-fork':
-        return True
-    else:
-        return False
+    return len(argv) >= 2 and argv[1] == '--billiard-fork'
 
 
 def freeze_support():
@@ -126,10 +124,7 @@ def freeze_support():
         kwds = {}
         for arg in sys.argv[2:]:
             name, value = arg.split('=')
-            if value == 'None':
-                kwds[name] = None
-            else:
-                kwds[name] = int(value)
+            kwds[name] = None if value == 'None' else int(value)
         spawn_main(**kwds)
         sys.exit()
 
@@ -141,11 +136,10 @@ def get_command_line(**kwds):
     if getattr(sys, 'frozen', False):
         return ([sys.executable, '--billiard-fork'] +
                 ['%s=%r' % item for item in kwds.items()])
-    else:
-        prog = 'from billiard.spawn import spawn_main; spawn_main(%s)'
-        prog %= ', '.join('%s=%r' % item for item in kwds.items())
-        opts = util._args_from_interpreter_flags()
-        return [_python_exe] + opts + ['-c', prog, '--billiard-fork']
+    prog = 'from billiard.spawn import spawn_main; spawn_main(%s)'
+    prog %= ', '.join('%s=%r' % item for item in kwds.items())
+    opts = util._args_from_interpreter_flags()
+    return [_python_exe] + opts + ['-c', prog, '--billiard-fork']
 
 
 def spawn_main(pipe_handle, parent_pid=None, tracker_fd=None):

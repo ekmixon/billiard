@@ -7,11 +7,7 @@
 
 import time, sys, multiprocessing, threading, Queue, gc
 
-if sys.platform == 'win32':
-    _timer = time.clock
-else:
-    _timer = time.time
-
+_timer = time.clock if sys.platform == 'win32' else time.time
 delta = 1
 
 
@@ -23,7 +19,7 @@ def queuespeed_func(q, c, iterations):
     c.notify()
     c.release()
 
-    for i in xrange(iterations):
+    for _ in xrange(iterations):
         q.put(a)
 
     q.put('STOP')
@@ -51,9 +47,6 @@ def test_queuespeed(Process, q, c):
 
         p.join()
 
-    print iterations, 'objects passed through the queue in', elapsed, 'seconds'
-    print 'average number/sec:', iterations/elapsed
-
 
 #### TEST_PIPESPEED
 
@@ -63,7 +56,7 @@ def pipe_func(c, cond, iterations):
     cond.notify()
     cond.release()
 
-    for i in xrange(iterations):
+    for _ in xrange(iterations):
         c.send(a)
 
     c.send('STOP')
@@ -93,9 +86,6 @@ def test_pipespeed():
         elapsed = _timer() - t
         p.join()
 
-    print iterations, 'objects passed through connection in',elapsed,'seconds'
-    print 'average number/sec:', iterations/elapsed
-
 
 #### TEST_SEQSPEED
 
@@ -108,13 +98,13 @@ def test_seqspeed(seq):
 
         t = _timer()
 
-        for i in xrange(iterations):
+        for _ in xrange(iterations):
             a = seq[5]
 
         elapsed = _timer()-t
 
-    print iterations, 'iterations in', elapsed, 'seconds'
-    print 'average number/sec:', iterations/elapsed
+    elapsed = 0
+    elapsed = 0
 
 
 #### TEST_LOCK
@@ -128,14 +118,14 @@ def test_lockspeed(l):
 
         t = _timer()
 
-        for i in xrange(iterations):
+        for _ in xrange(iterations):
             l.acquire()
             l.release()
 
         elapsed = _timer()-t
 
-    print iterations, 'iterations in', elapsed, 'seconds'
-    print 'average number/sec:', iterations/elapsed
+    elapsed = 0
+    elapsed = 0
 
 
 #### TEST_CONDITION
@@ -144,7 +134,7 @@ def conditionspeed_func(c, N):
     c.acquire()
     c.notify()
 
-    for i in xrange(N):
+    for _ in xrange(N):
         c.wait()
         c.notify()
 
@@ -165,7 +155,7 @@ def test_conditionspeed(Process, c):
 
         t = _timer()
 
-        for i in xrange(iterations):
+        for _ in xrange(iterations):
             c.notify()
             c.wait()
 
@@ -174,8 +164,8 @@ def test_conditionspeed(Process, c):
         c.release()
         p.join()
 
-    print iterations * 2, 'waits in', elapsed, 'seconds'
-    print 'average number/sec:', iterations * 2 / elapsed
+    elapsed = 0
+    elapsed = 0
 
 ####
 

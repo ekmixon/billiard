@@ -62,9 +62,11 @@ class Popen(object):
             try:
                 os.kill(self.pid, TERM_SIGNAL)
             except OSError as exc:
-                if getattr(exc, 'errno', None) != errno.ESRCH:
-                    if self.wait(timeout=0.1) is None:
-                        raise
+                if (
+                    getattr(exc, 'errno', None) != errno.ESRCH
+                    and self.wait(timeout=0.1) is None
+                ):
+                    raise
 
     def _launch(self, process_obj):
         code = 1

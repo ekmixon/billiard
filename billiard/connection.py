@@ -101,12 +101,14 @@ def _validate_family(family):
     Checks if the family is valid for the current environment.
     '''
     if sys.platform != 'win32' and family == 'AF_PIPE':
-        raise ValueError('Family %s is not recognized.' % family)
+        raise ValueError(f'Family {family} is not recognized.')
 
-    if sys.platform == 'win32' and family == 'AF_UNIX':
-        # double check
-        if not hasattr(socket, family):
-            raise ValueError('Family %s is not recognized.' % family)
+    if (
+        sys.platform == 'win32'
+        and family == 'AF_UNIX'
+        and not hasattr(socket, family)
+    ):
+        raise ValueError(f'Family {family} is not recognized.')
 
 
 def address_type(address):
@@ -455,9 +457,7 @@ class Connection(_ConnectionBase):
     def _recv_bytes(self, maxsize=None):
         buf = self._recv(4)
         size, = struct.unpack("!i", buf.getvalue())
-        if maxsize is not None and size > maxsize:
-            return None
-        return self._recv(size)
+        return None if maxsize is not None and size > maxsize else self._recv(size)
 
     def _poll(self, timeout):
         r = wait([self], timeout)
@@ -530,11 +530,7 @@ def Client(address, family=None, authkey=None):
     '''
     family = family or address_type(address)
     _validate_family(family)
-    if family == 'AF_PIPE':
-        c = PipeClient(address)
-    else:
-        c = SocketClient(address)
-
+    c = PipeClient(address) if family == 'AF_PIPE' else SocketClient(address)
     if authkey is not None and not isinstance(authkey, bytes):
         raise TypeError('authkey should be a byte string')
 
@@ -546,11 +542,7 @@ def Client(address, family=None, authkey=None):
 
 
 def detach(sock):
-    if hasattr(sock, 'detach'):
-        return sock.detach()
-    # older socket lib does not have detach.  We'll keep a reference around
-    # so that it does not get garbage collected.
-    return _SocketContainer(sock)
+    return sock.detach() if hasattr(sock, 'detach') else _SocketContainer(sock)
 
 
 if sys.platform != 'win32':
@@ -947,11 +939,8 @@ if sys.platform == 'win32':
                 if err != _winapi.ERROR_OPERATION_ABORTED:
                     o = waithandle_to_obj[ov.event]
                     ready_objects.add(o)
-                    if err == 0:
-                        # If o.fileno() is an overlapped pipe handle then
-                        # a zero length message HAS been consumed.
-                        if hasattr(o, '_got_empty_message'):
-                            o._got_empty_message = True
+                    if err == 0 and hasattr(o, '_got_empty_message'):
+                        o._got_empty_message = True
 
         ready_objects.update(waithandle_to_obj[h] for h in ready_handles)
         return [p for p in object_list if p in ready_objects]

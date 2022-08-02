@@ -66,7 +66,7 @@ class BaseContext(object):
             elif 'bsd' in sys.platform or sys.platform == 'darwin':
                 comm = '/sbin/sysctl -n hw.ncpu'
                 if sys.platform == 'darwin':
-                    comm = '/usr' + comm
+                    comm = f'/usr{comm}'
                 try:
                     with os.popen(comm) as p:
                         num = int(p.read())
@@ -284,12 +284,11 @@ class DefaultContext(BaseContext):
         self._actual_context = None
 
     def get_context(self, method=None):
-        if method is None:
-            if self._actual_context is None:
-                self._actual_context = self._default_context
-            return self._actual_context
-        else:
+        if method is not None:
             return super(DefaultContext, self).get_context(method)
+        if self._actual_context is None:
+            self._actual_context = self._default_context
+        return self._actual_context
 
     def set_start_method(self, method, force=False):
         if self._actual_context is not None and not force:
@@ -309,14 +308,14 @@ class DefaultContext(BaseContext):
     def get_all_start_methods(self):
         if sys.platform == 'win32':
             return ['spawn']
-        else:
-            from . import reduction
-            if reduction.HAVE_SEND_HANDLE:
-                return ['fork', 'spawn', 'forkserver']
-            else:
-                return ['fork', 'spawn']
+        from . import reduction
+        return (
+            ['fork', 'spawn', 'forkserver']
+            if reduction.HAVE_SEND_HANDLE
+            else ['fork', 'spawn']
+        )
 
-DefaultContext.__all__ = list(x for x in dir(DefaultContext) if x[0] != '_')
+DefaultContext.__all__ = [x for x in dir(DefaultContext) if x[0] != '_']
 
 #
 # Context types for fixed start method

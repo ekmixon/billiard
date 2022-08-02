@@ -261,8 +261,7 @@ class Server(object):
                 except Exception as exc:
                     msg = ('#ERROR', exc)
                 else:
-                    typeid = gettypeid and gettypeid.get(methodname, None)
-                    if typeid:
+                    if typeid := gettypeid and gettypeid.get(methodname, None):
                         rident, rexposed = self.create(conn, typeid, res)
                         token = Token(typeid, self.address, rident)
                         msg = ('#PROXY', (rexposed, token))
@@ -326,14 +325,18 @@ class Server(object):
         Return some info --- useful to spot problems with refcounting
         '''
         with self.mutex:
-            result = []
-            keys = list(self.id_to_obj.keys())
-            keys.sort()
-            for ident in keys:
-                if ident != '0':
-                    result.append('  %s:       refcount=%s\n    %s' %
-                                  (ident, self.id_to_refcount[ident],
-                                   str(self.id_to_obj[ident][0])[:75]))
+            keys = sorted(self.id_to_obj.keys())
+            result = [
+                '  %s:       refcount=%s\n    %s'
+                % (
+                    ident,
+                    self.id_to_refcount[ident],
+                    str(self.id_to_obj[ident][0])[:75],
+                )
+                for ident in keys
+                if ident != '0'
+            ]
+
             return '\n'.join(result)
 
     def number_of_objects(self, c):
@@ -500,7 +503,7 @@ class BaseManager(object):
                   self._serializer, writer, initializer, initargs),
         )
         ident = ':'.join(str(i) for i in self._process._identity)
-        self._process.name = type(self).__name__ + '-' + ident
+        self._process.name = f'{type(self).__name__}-{ident}'
         self._process.start()
 
         # get address of server
@@ -728,7 +731,7 @@ class BaseProxy(object):
         util.debug('making connection to manager')
         name = process.current_process().name
         if threading.current_thread().name != 'MainThread':
-            name += '|' + threading.current_thread().name
+            name += f'|{threading.current_thread().name}'
         conn = self._Client(self._token.address, authkey=self._authkey)
         dispatch(conn, None, 'accept_connection', (name,))
         self._tls.connection = conn
@@ -823,13 +826,12 @@ class BaseProxy(object):
         if context.get_spawning_popen() is not None:
             kwds['authkey'] = self._authkey
 
-        if getattr(self, '_isauto', False):
-            kwds['exposed'] = self._exposed_
-            return (RebuildProxy,
-                    (AutoProxy, self._token, self._serializer, kwds))
-        else:
+        if not getattr(self, '_isauto', False):
             return (RebuildProxy,
                     (type(self), self._token, self._serializer, kwds))
+        kwds['exposed'] = self._exposed_
+        return (RebuildProxy,
+                (AutoProxy, self._token, self._serializer, kwds))
 
     def __deepcopy__(self, memo):
         return self._getvalue()
@@ -862,12 +864,11 @@ def RebuildProxy(func, token, serializer, kwds):
 
     if server and server.address == token.address:
         return server.id_to_obj[token.id][0]
-    else:
-        incref = (
-            kwds.pop('incref', True) and
-            not getattr(process.current_process(), '_inheriting', False)
-        )
-        return func(token, serializer, incref=incref, **kwds)
+    incref = (
+        kwds.pop('incref', True) and
+        not getattr(process.current_process(), '_inheriting', False)
+    )
+    return func(token, serializer, incref=incref, **kwds)
 
 #
 # Functions to create proxies and proxy types
@@ -915,7 +916,7 @@ def AutoProxy(token, serializer, manager=None, authkey=None,
     if authkey is None:
         authkey = process.current_process().authkey
 
-    ProxyType = MakeProxyType('AutoProxy[%s]' % token.typeid, exposed)
+    ProxyType = MakeProxyType(f'AutoProxy[{token.typeid}]', exposed)
     proxy = ProxyType(token, serializer, manager=manager, authkey=authkey,
                       incref=incref)
     proxy._isauto = True
@@ -933,12 +934,14 @@ class Namespace(object):
 
     def __repr__(self):
         _items = list(self.__dict__.items())
-        temp = []
-        for name, value in _items:
-            if not name.startswith('_'):
-                temp.append('%s=%r' % (name, value))
+        temp = [
+            '%s=%r' % (name, value)
+            for name, value in _items
+            if not name.startswith('_')
+        ]
+
         temp.sort()
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(temp))
+        return f"{self.__class__.__name__}({', '.join(temp)})"
 
 
 class Value(object):
